@@ -10,6 +10,9 @@ import { InjectModel } from '@nestjs/mongoose';
 export class UserService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
+
+
+  // ========== Admin Services =========
   async create(createUserDto: CreateUserDto) {
     const ifUserExists = await this.userModel.findOne({
       email: createUserDto.email,
@@ -125,4 +128,55 @@ export class UserService {
       data: null,
     };
   }
+
+
+  // ========== User Services =========
+  async getAccount(request: any) {
+    const id = request.user._id;
+    if(!id){
+      throw new HttpException('User ID is required', 400);
+    }
+
+    const user = await this.userModel.findById(id, { password: 0, __v: 0 });
+    if (!user) {
+      throw new HttpException('User not found', 404);
+    }
+
+    return {
+      status: "success",
+      data: user,
+    };
+  }
+
+  async updateAccount(request: any, updateUserDto: UpdateUserDto) {
+    const id = request.user._id;
+    if(!id){
+      throw new HttpException('User ID is required', 400);
+    }
+
+    const updatedUser = await this.userModel.findByIdAndUpdate(
+      id,
+      { ...updateUserDto },
+      { new: true, runValidators: true, select: { password: 0, __v: 0 } },
+    );
+
+    return {
+      status: "success",
+      data: updatedUser,
+    };
+  }
+
+  async deleteAccount(request: any) {
+    const id = request.user._id;
+    if(!id){
+      throw new HttpException('User ID is required', 400);
+    }
+    await this.userModel.findByIdAndUpdate(id, { active: false });
+    return {
+      status: "success",
+      data: null,
+    };
+  }
+
+  
 }

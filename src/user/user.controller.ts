@@ -8,6 +8,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { AuthGuard } from './guard/Auth.guard';
 import { Roles } from './decorator/roles.decorator';
 
+
+
+// ========= Admin Routes =========
 @Controller('user')
 export class UserController {
   constructor(
@@ -73,5 +76,48 @@ export class UserController {
   @UseGuards(AuthGuard)
   async remove(@Param('id') id: Types.ObjectId) {
     return await this.userService.remove(id);
+  }
+}
+
+
+// ========= User Routes =========
+@Controller('userMe')
+export class UserMeController {
+  constructor(
+    private readonly userService: UserService
+  ) {}
+
+  //docs    User can get his profile
+  //route   GET api/v1/userMe
+  //access  Private (user and admin)
+  @Get()
+  @Roles(['user', 'admin'])
+  @UseGuards(AuthGuard)
+  async getMe(@Req() request: any) {
+    return await this.userService.getAccount(request);
+  }
+
+  //docs    User can update his profile
+  //route   PATCH api/v1/userMe
+  //access  Private (user and admin)
+  @Patch()
+  @Roles(['user', 'admin'])
+  @UseGuards(AuthGuard)
+  async updateMe(
+    @Req() request: any,
+    @Body(new ValidationPipe({whitelist: true, transform:true}))
+    updateUserDto: UpdateUserDto,
+  ) {
+    return await this.userService.updateAccount(request, updateUserDto);
+  }
+
+  //docs    User can delete his account
+  //route   DELETE api/v1/userMe
+  //access  Private (user)
+  @Delete()
+  @Roles(['user'])
+  @UseGuards(AuthGuard)
+  async deleteMe(@Req() request: any) {
+    return await this.userService.deleteAccount(request);
   }
 }
