@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe } from '@nestjs/common';
 import { SubCategoryService } from './sub-category.service';
 import { CreateSubCategoryDto } from './dto/create-sub-category.dto';
 import { UpdateSubCategoryDto } from './dto/update-sub-category.dto';
@@ -18,7 +18,7 @@ export class SubCategoryController {
     @Post()
     @Roles([Role.Admin])
     @UseGuards(AuthGuard)
-    create(@Body() createSubCategoryDto: CreateSubCategoryDto) {
+    create(@Body(new ValidationPipe({ whitelist: true, transform: true })) createSubCategoryDto: CreateSubCategoryDto) {
       return this.subCategoryService.create(createSubCategoryDto);
     }
   
@@ -46,7 +46,7 @@ export class SubCategoryController {
     @Patch(':id')
     @Roles([Role.Admin])
     @UseGuards(AuthGuard)
-    update(@Param('id') id: Types.ObjectId, @Body() updateSubCategoryDto: UpdateSubCategoryDto) {
+    update(@Param('id') id: Types.ObjectId, @Body(new ValidationPipe({ whitelist: true, transform: true })) updateSubCategoryDto: UpdateSubCategoryDto) {
       return this.subCategoryService.update(id, updateSubCategoryDto);
     }
   

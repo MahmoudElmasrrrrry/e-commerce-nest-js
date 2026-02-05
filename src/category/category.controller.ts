@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ValidationPipe } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -6,6 +6,7 @@ import { Roles } from 'src/utils/decorator/roles.decorator';
 import { Role } from 'src/utils/decorator/roles.enum';
 import { AuthGuard } from 'src/utils/guard/Auth.guard';
 import { Types } from 'mongoose';
+import { withLatestFrom } from 'rxjs';
 
 @Controller('category')
 export class CategoryController {
@@ -18,7 +19,7 @@ export class CategoryController {
   @Post()
   @Roles([Role.Admin])
   @UseGuards(AuthGuard)
-  create(@Body() createCategoryDto: CreateCategoryDto) {
+  create(@Body(new ValidationPipe({ whitelist: true, transform: true })) createCategoryDto: CreateCategoryDto) {
     return this.categoryService.create(createCategoryDto);
   }
 
@@ -46,7 +47,7 @@ export class CategoryController {
   @Patch(':id')
   @Roles([Role.Admin])
   @UseGuards(AuthGuard)
-  update(@Param('id') id: Types.ObjectId, @Body() updateCategoryDto: UpdateCategoryDto) {
+  update(@Param('id') id: Types.ObjectId, @Body(new ValidationPipe({ whitelist: true, transform: true })) updateCategoryDto: UpdateCategoryDto) {
     return this.categoryService.update(id, updateCategoryDto);
   }
 
