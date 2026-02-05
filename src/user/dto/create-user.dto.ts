@@ -1,4 +1,5 @@
 import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPhoneNumber, IsString, IsUrl, MaxLength, MinLength } from "class-validator";
+import { Role, Sex } from "src/utils/decorator/roles.enum";
 
 export class CreateUserDto {
 
@@ -20,7 +21,7 @@ export class CreateUserDto {
     password: string;
 
     @IsString({message: 'Role must be a string'})
-    @IsEnum(['user', 'admin'], {message: 'Role must be either user or admin'})
+    @IsEnum(Role, {message: 'Role must be either user or admin'})
     @IsOptional()
     role: string
 
@@ -51,7 +52,7 @@ export class CreateUserDto {
     verificationCode : string;
 
     @IsString({message: 'Gender must be a string'})
-    @IsEnum(['male', 'female'], {message: 'Gender must be either male or female'})
+    @IsEnum(Sex, {message: 'Gender must be either male or female'})
     @IsOptional()
     gender: string;
 

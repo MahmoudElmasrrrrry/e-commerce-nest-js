@@ -5,8 +5,9 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { Model, Types } from 'mongoose';
 import { User } from './user.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { AuthGuard } from './guard/Auth.guard';
-import { Roles } from './decorator/roles.decorator';
+import { AuthGuard } from '../utils/guard/Auth.guard';
+import { Roles } from '../utils/decorator/roles.decorator';
+import { Role } from 'src/utils/decorator/roles.enum';
 
 
 
@@ -21,7 +22,7 @@ export class UserController {
   //route   POST api/v1/user
   //access  Private (admin only)
   @Post()
-  @Roles(['admin'])
+  @Roles([Role.Admin])
   @UseGuards(AuthGuard)
   async create(
     @Body(new ValidationPipe({whitelist: true, transform:true}))
@@ -35,7 +36,7 @@ export class UserController {
   //route   GET api/v1/user
   //access  Private (admin only)
   @Get()
-  @Roles(['admin'])
+  @Roles([Role.Admin])
   @UseGuards(AuthGuard)
   async findAll(@Query() query: any) {
     return await this.userService.findAll(query);
@@ -46,7 +47,7 @@ export class UserController {
   //route   GET api/v1/user/:id
   //access  Private (admin only)
   @Get(':id')
-  @Roles(['admin'])
+  @Roles([Role.Admin])
   @UseGuards(AuthGuard)
   async findOne(@Param('id') id: Types.ObjectId) {
     return await this.userService.findOne(id);
@@ -57,7 +58,7 @@ export class UserController {
   //route   PATCH api/v1/user/:id
   //access  Private (admin only)
   @Patch(':id')
-  @Roles(['admin'])
+  @Roles([Role.Admin])
   @UseGuards(AuthGuard)
   async update(
     @Param('id') id: Types.ObjectId,
@@ -72,7 +73,7 @@ export class UserController {
   //route   DELETE api/v1/user/:id
   //access  Private (admin only)
   @Delete(':id')
-  @Roles(['admin'])
+  @Roles([Role.Admin])
   @UseGuards(AuthGuard)
   async remove(@Param('id') id: Types.ObjectId) {
     return await this.userService.remove(id);
@@ -91,7 +92,7 @@ export class UserMeController {
   //route   GET api/v1/userMe
   //access  Private (user and admin)
   @Get()
-  @Roles(['user', 'admin'])
+  @Roles([Role.User, Role.Admin])
   @UseGuards(AuthGuard)
   async getMe(@Req() request: any) {
     return await this.userService.getAccount(request);
@@ -101,7 +102,7 @@ export class UserMeController {
   //route   PATCH api/v1/userMe
   //access  Private (user and admin)
   @Patch()
-  @Roles(['user', 'admin'])
+  @Roles([Role.User, Role.Admin])
   @UseGuards(AuthGuard)
   async updateMe(
     @Req() request: any,
@@ -115,7 +116,7 @@ export class UserMeController {
   //route   DELETE api/v1/userMe
   //access  Private (user)
   @Delete()
-  @Roles(['user'])
+  @Roles([Role.User])
   @UseGuards(AuthGuard)
   async deleteMe(@Req() request: any) {
     return await this.userService.deleteAccount(request);

@@ -4,6 +4,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './user.schema';
 import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
+import { Role } from 'src/utils/decorator/roles.enum';
 
 
 @Injectable()
@@ -21,20 +22,15 @@ export class UserService {
       throw new HttpException('This email already exist', 409);
     }
 
-    const user = {
-      role: createUserDto.role || 'user',
-    };
 
-    await this.userModel.create({
+    const user = await this.userModel.create({
       ...createUserDto,
-      role: user.role,
+      role: createUserDto.role || Role.User,
       active: true,
+      verificationCode: { expiresAt: null, code: '' },
     });
 
-    const userdata = await this.userModel.findOne(
-      { email: createUserDto.email },
-      { password: 0, __v: 0 },
-    );
+    const {password, __v, ...userdata} = user.toObject();
 
     return {
       status: "success",
@@ -178,5 +174,5 @@ export class UserService {
     };
   }
 
-  
+
 }
