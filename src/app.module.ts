@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { CategoryModule } from './category/category.module';
 import { SubCategoryModule } from './sub-category/sub-category.module';
 import { BrandModule } from './brand/brand.module';
+import { CouponModule } from './coupon/coupon.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { BrandModule } from './brand/brand.module';
     AuthModule,
     CategoryModule,
     SubCategoryModule,
-    BrandModule
+    BrandModule,
+    CouponModule
   
   ],
   controllers: [],
