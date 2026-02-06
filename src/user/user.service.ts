@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './user.schema';
@@ -148,6 +148,20 @@ export class UserService {
     const id = request.user._id;
     if(!id){
       throw new HttpException('User ID is required', 400);
+    }
+
+    if(updateUserDto.email){
+      if(request.user.email === updateUserDto.email){
+        throw new BadRequestException('This email already used');
+      }
+      const emailExists = await this.userModel.findOne({ email: updateUserDto.email });
+      if(emailExists){
+        throw new BadRequestException('Email with this name already exists');
+      } 
+    }
+
+    if(updateUserDto.password){
+      throw new BadRequestException('You can not updated password here, you should reset password')
     }
 
     const updatedUser = await this.userModel.findByIdAndUpdate(

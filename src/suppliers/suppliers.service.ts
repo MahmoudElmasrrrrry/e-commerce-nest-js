@@ -58,16 +58,13 @@ export class SuppliersService {
       if(isExists.name === updateSupplierDto.name){
         throw new BadRequestException('Supplier with this name already exists');
       }
-
       const nameExists = await this.suppliersModel.findOne({ name: updateSupplierDto.name });
       if(nameExists){
         throw new BadRequestException('Supplier with this name already exists');
       } 
     }
-
-
-    await this.suppliersModel.findByIdAndUpdate(id, {...updateSupplierDto}, { new: true, runValidators: true });
-    const supplierUpdated = await this.suppliersModel.findById(id).select('-__v');
+    
+    const supplierUpdated = await this.suppliersModel.findByIdAndUpdate(id, {...updateSupplierDto}, { new: true, runValidators: true }).select('-__v');
 
     return {
       status: 'success',

@@ -59,11 +59,14 @@ export class CouponService {
       throw new BadRequestException('Coupon not found');
     }
 
-    if (updateCouponDto.name && (updateCouponDto.name !== coupon.name)) {
-      const couponExists = await this.couponModel.findOne({ name: updateCouponDto.name });
-      if(couponExists){
+    if(updateCouponDto.name){
+      if(coupon.name === updateCouponDto.name){
         throw new BadRequestException('Coupon with this name already exists');
       }
+      const nameExists = await this.couponModel.findOne({ name: updateCouponDto.name });
+      if(nameExists){
+        throw new BadRequestException('Coupon with this name already exists');
+      } 
     }
 
     if(updateCouponDto.expireDate){
@@ -73,8 +76,7 @@ export class CouponService {
       }
     }
 
-    await this.couponModel.findByIdAndUpdate(id, {...updateCouponDto}, { new: true, runValidators: true });
-    const couponUpdated = await this.couponModel.findById(id).select('-__v');
+    const couponUpdated = await this.couponModel.findByIdAndUpdate(id, {...updateCouponDto}, { new: true, runValidators: true }).select('-__v');
     return {
       status: 'success',
       message: 'Coupon updated successfully',

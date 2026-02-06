@@ -47,17 +47,28 @@ export class BrandService {
   }
 
   async update(id: Types.ObjectId, updateBrandDto: UpdateBrandDto) {
-    const brand = await this.brandModel.findByIdAndUpdate(id, {...updateBrandDto}, { new: true, runValidators: true });
+    const brand = await this.brandModel.findById(id);
     if (!brand) {
       throw new BadRequestException('Brand not found');
     }
 
-    const {__v, ...brandUpdated} = brand.toObject();
+    if(updateBrandDto.name){
+      if(brand.name === updateBrandDto.name){
+        throw new BadRequestException('SupBrandplier with this name already exists');
+      }
+      const nameExists = await this.brandModel.findOne({ name: updateBrandDto.name });
+      if(nameExists){
+        throw new BadRequestException('Brand with this name already exists');
+      } 
+    }
+    
+    const updatedBrand = await this.brandModel.findByIdAndUpdate(id, {...updateBrandDto}, { new: true, runValidators: true }).select('-__v');
+    
     
     return {
       status: 'success',
       message: 'Brand updated successfully',
-      data: brandUpdated,
+      data: updatedBrand,
     };
   }
 

@@ -53,7 +53,22 @@ export class CategoryService {
   }
 
   async update(id: Types.ObjectId, updateCategoryDto: UpdateCategoryDto) {
-    const category = await this.categoryModel
+    const category = await this.categoryModel.findById(id);
+
+    if (!category) {
+      throw new BadRequestException('Category not found');
+    }
+
+    if(updateCategoryDto.name){
+      if(category.name === updateCategoryDto.name){
+        throw new BadRequestException('Category with this name already exists');
+      }
+      const nameExists = await this.categoryModel.findOne({ name: updateCategoryDto.name });
+      if(nameExists){
+        throw new BadRequestException('Category with this name already exists');
+      } 
+    }
+    const updatedcategory = await this.categoryModel
       .findByIdAndUpdate(
         id,
         { ...updateCategoryDto },
@@ -65,12 +80,9 @@ export class CategoryService {
       .select('-__v')
       .exec();
 
-    if (!category) {
-      throw new BadRequestException('Category not found');
-    }
     return {
       status: 'success',
-      data: category,
+      data: updatedcategory,
     };
   }
 
