@@ -1,5 +1,5 @@
-import { HttpException, Injectable } from '@nestjs/common';
-import { loginDto, signUpDto } from './dto/create-auth.dto';
+import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import { loginDto, forgotPassword, signUpDto, resetPassword } from './dto/create-auth.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from 'src/user/user.schema';
 import { Model } from 'mongoose';
@@ -8,7 +8,8 @@ import { comparing, hashing } from 'src/utils/security/bcrypt';
 import { EmailType, Role } from 'src/utils/decorator/roles.enum';
 import { createOTP } from 'src/utils/email/createOTP';
 import { template } from 'src/utils/email/generateHTML';
-import { emailEvent } from 'src/utils/email/email.events';
+import { EMAIL_EVENTS_Enum, emailEvent } from 'src/utils/email/email.events';
+import { Subject } from 'rxjs';
 
 @Injectable()
 export class AuthService {
@@ -42,12 +43,11 @@ export class AuthService {
       subject: 'Verify your email',
     })
 
-    emailEvent.publish(EmailType.VERIFY_EMAIL as any,{
+    emailEvent.publish(EMAIL_EVENTS_Enum.VERIFY_EMAIL,{
       to: user.email,
       subject: 'Verify your email',
       html,
     })
-
 
     return {
       status: 'success',
@@ -66,15 +66,15 @@ export class AuthService {
       throw new HttpException('Email already verified', 400);
     }
     
-    if(!user.verificationCode.code){
+    if(!user.verificationCode?.code){
       throw new HttpException('No verification code found, please request a new one', 400);
     }
     
-    if (user.verificationCode.expiresAt && (user.verificationCode.expiresAt < new Date())) {
+    if (user.verificationCode?.expiresAt && (user.verificationCode?.expiresAt < new Date())) {
       throw new HttpException('Verification code expired', 400);
     }
 
-    const isMatched = comparing(code, user.verificationCode.code);
+    const isMatched = comparing(code, user.verificationCode?.code);
     if(!isMatched){
       throw new HttpException('Invalid verification code', 400);
     }
@@ -94,6 +94,57 @@ export class AuthService {
       status: 'success',
       message: 'Email verified successfully, you can now sign in to your account',
     };
+  }
+
+  async resendOTP(email: string){
+    const user = await this.userModel.findOne({email});
+    if(!user){
+      throw new NotFoundException('User Not Found');
+    }
+
+    if(user.active){
+      throw new BadRequestException('User Already Verefied');
+    }
+
+    if(!user.verificationCode?.code){
+      throw new NotFoundException('No OTP found, please request a new one')
+    }
+
+    const expired = user.verificationCode?.expiresAt && (user.verificationCode?.expiresAt < new Date()) 
+    if (!expired) {
+      throw new ConflictException('Verification code still valid');
+    }
+
+    const otp = createOTP();
+    const html = template({
+      otp,
+      name: user.name, 
+      subject: "OTP Verification"
+    })
+
+    emailEvent.publish(EMAIL_EVENTS_Enum.VERIFY_EMAIL, {
+      to: email,
+      Subject: "Resend OTP",
+      html
+    });
+
+    await this.userModel.updateOne(
+      {email},
+      {
+      $set:{
+        verificationCode:{
+          code: hashing(otp),
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          }
+        }
+      }
+  )
+
+    return{
+      status: 'success',
+      message:'OTP Send Successfully',
+      data: null
+    }
   }
   
   async signIn(loginDto: loginDto) {
@@ -125,5 +176,95 @@ export class AuthService {
         token,
       },
     };
+  }
+
+  async forgotPass(email: string){
+    const user = await this.userModel.findOne({email});
+    if(!user){
+      throw new NotFoundException('User Not Found');
+    }
+
+    if(!user.active){
+      throw new BadRequestException('User Not Verefied, You should be vetify email first');
+    }
+
+    if(user.verificationCode){
+      const expired = user.verificationCode.expiresAt && (user.verificationCode.expiresAt < new Date()) 
+      if (!expired) {
+        throw new ConflictException('Verification code still valid');
+      }   
+    }
+
+    const otp = createOTP();
+    const html = template({
+      otp: otp,
+      name: user.name,
+      subject: "Reset Password",
+    });
+
+    emailEvent.publish(EMAIL_EVENTS_Enum.RESET_PASSWORD, {
+      to: email,
+      subject: "Reset your password",
+      html,
+    });
+
+    await this.userModel.updateOne({email}, {
+      verificationCode:{
+        code: hashing(otp),
+        expiresAt:new Date(Date.now() + 10 * 60 * 1000)
+      }
+    })
+
+    return {
+      status:'success',
+      message: 'OTP reset password sent successfully',
+      data: null
+    }
+    
+    
+  }
+
+  async resetPass(resetPassword : resetPassword){
+    
+    const user = await this.userModel.findOne({email: resetPassword.email});
+
+    if (!user) {
+      throw new HttpException('Invalid email', 400);
+    }
+
+    if(!user.active){
+      throw new HttpException('User Not Verefied, You should be vetify email first', 400);
+    }
+    
+    if(!user.verificationCode?.code){
+      throw new HttpException('No verification code found, please click forget password to get new OTP', 400);
+    }
+    
+    if (user.verificationCode?.expiresAt && (user.verificationCode?.expiresAt < new Date())) {
+      throw new HttpException('Verification code expired', 400);
+    }
+
+    const isMatched = comparing(resetPassword.code, user.verificationCode?.code);
+    if(!isMatched){
+      throw new HttpException('Invalid verification code', 400);
+    }
+
+    await this.userModel.updateOne({email: resetPassword.email}, 
+      {
+
+        $set:{
+          password: resetPassword.newPassword
+        },
+        $unset:{
+          verificationCode: 1
+        }
+      
+      });
+    return {
+      status: 'success',
+      message:'New Password Created Successfully',
+      data: null
+    }
+
   }
 }

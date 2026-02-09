@@ -27,8 +27,12 @@ export class UserService {
       ...createUserDto,
       role: createUserDto.role || Role.User,
       active: true,
-      verificationCode: { expiresAt: null, code: '' },
+      verificationCode: {
+        code: null,
+        expiresAt: null
+      }
     });
+
 
     const {password, __v, ...userdata} = user.toObject();
 

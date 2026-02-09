@@ -63,15 +63,43 @@ export class signUpDto {
   gender: string;
 }
 
-export class verifyEmailDto{
-    @IsString({ message: 'Email must be a string' })
-    @IsEmail({}, { message: 'Email must be a valid email address' })
-    @IsNotEmpty({ message: 'Email is required' })
-    email: string;
+export class verifyEmailDto {
+  @IsString({ message: 'Email must be a string' })
+  @IsEmail({}, { message: 'Email must be a valid email address' })
+  @IsNotEmpty({ message: 'Email is required' })
+  email: string;
 
-    @IsString({ message: 'Code must be a string' }) 
-    @IsNotEmpty({ message: 'Code is required' })    
-    code: string;
+  @IsString({ message: 'Code must be a string' })
+  @IsNotEmpty({ message: 'Code is required' })
+  code: string;
+}
+export class resendOTP {
+  @IsString({ message: 'Email must be a string' })
+  @IsEmail({}, { message: 'Email must be a valid email address' })
+  @IsNotEmpty({ message: 'Email is required' })
+  email: string;
+}
+export class forgotPassword {
+  @IsString({ message: 'Email must be a string' })
+  @IsEmail({}, { message: 'Email must be a valid email address' })
+  @IsNotEmpty({ message: 'Email is required' })
+  email: string;
+}
+export class resetPassword {
+  @IsString({ message: 'Email must be a string' })
+  @IsEmail({}, { message: 'Email must be a valid email address' })
+  @IsNotEmpty({ message: 'Email is required' })
+  email: string;
+
+  @IsString({ message: 'Code must be a string' })
+  @IsNotEmpty({ message: 'Code is required' })
+  code: string;
+
+  @IsString({ message: 'New Password must be a string' })
+  @MinLength(6, { message: 'New Password must be at least 6 characters' })
+  @MaxLength(50, { message: 'New Password must be less than 50 characters' })
+  @IsNotEmpty({ message: 'New Password is required' })
+  newPassword: string;
 }
 
 export class loginDto {
