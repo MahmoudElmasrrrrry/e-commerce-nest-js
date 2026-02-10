@@ -11,6 +11,7 @@ import { CouponModule } from './coupon/coupon.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { TaxModule } from './tax/tax.module';
 import { ProductModule } from './product/product.module';
+import { CartModule } from './cart/cart.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { ProductModule } from './product/product.module';
     CouponModule,
     SuppliersModule,
     TaxModule,
-    ProductModule
+    ProductModule,
+    CartModule
   
   ],
   controllers: [],

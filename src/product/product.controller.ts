@@ -37,9 +37,8 @@ export class ProductController {
 
   //docs    Admin can get products
   //route   GET api/v1/product
-  //access  Private (admin)
+  //access  Public
   @Get()
-  @Roles([Role.Admin])
   @UseGuards(AuthGuard)
   findAll(@Query() query) {
     return this.productService.findAll(query);
@@ -47,9 +46,8 @@ export class ProductController {
 
   //docs    Admin can get specific product
   //route   GET api/v1/product/:id
-  //access  Private (admin)
+  //access  Public
   @Get(':id')
-  @Roles([Role.Admin])
   @UseGuards(AuthGuard)
   findOne(@Param('id') id: Types.ObjectId) {
     return this.productService.findOne(id);
