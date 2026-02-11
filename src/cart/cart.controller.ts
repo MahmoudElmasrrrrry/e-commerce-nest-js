@@ -18,10 +18,22 @@ import { Role } from 'src/utils/decorator/roles.enum';
 import { AuthGuard } from 'src/utils/guard/Auth.guard';
 import { Types } from 'mongoose';
 import { UpdateCartItemDto } from './dto/update-cart.dto';
+import { ApplyCouponDto } from './dto/apply-coupon.dto';
 
 @Controller('cart')
 export class CartController {
   constructor(private readonly cartService: CartService) {}
+
+  //docs    User can get cart
+  //route   POST api/v1/cart
+  //access  Private (user)
+
+  @Get()
+  @Roles([Role.User])
+  @UseGuards(AuthGuard)
+  async getLoggedUserCart(@Req() req: any) {
+    return this.cartService.getLoggedUserCart(req.user._id);
+  }
 
   //docs    User can add cart
   //route   POST api/v1/cart/:id
@@ -37,25 +49,21 @@ export class CartController {
     return this.cartService.addToCart(productId, req.user._id, addToCartDto);
   }
 
-  //docs    User can get cart
+  //docs    User can apply coupon
   //route   POST api/v1/cart
   //access  Private (user)
-
-  @Get()
+  @Patch('/apply-coupon')
   @Roles([Role.User])
   @UseGuards(AuthGuard)
-  async getLoggedUserCart(@Req() req: any) {
-    return this.cartService.getLoggedUserCart(req.user._id);
-  }
-
-  //docs    User can remove item
-  //route   DELETE api/v1/cart/:id
-  //access  Private (user)
-  @Delete(':itemId')
-  @Roles([Role.User])
-  @UseGuards(AuthGuard)
-  remove(@Param('itemId') itemId: Types.ObjectId, @Req() req: any) {
-    return this.cartService.removeItem(req.user._id, itemId);
+  applyCoupon(
+    @Req() req: any,
+    @Body(new ValidationPipe({ whitelist: true, transform: true }))
+    applyCouponDTO: ApplyCouponDto,
+  ) {
+    return this.cartService.applyCoupon(
+      req.user._id,
+      applyCouponDTO.couponName,
+    );
   }
 
   //docs    User can update cart item
@@ -74,5 +82,34 @@ export class CartController {
       itemId,
       updateCartItemDto,
     );
+  }
+
+  //docs    User can clear cart
+  //route   DELETE api/v1/cart
+  //access  Private (user)
+  @Delete()
+  @Roles([Role.User])
+  @UseGuards(AuthGuard)
+  deleteCart(@Req() req: any) {
+    return this.cartService.deleteCart(req.user._id);
+  }
+  //docs    User can remove coupon
+  //route   DELETE api/v1/cart/remove-coupon
+  //access  Private (user)
+  @Delete('remove-coupon')
+  @Roles([Role.User])
+  @UseGuards(AuthGuard)
+  removeCoupon(@Req() req: any) {
+    return this.cartService.removeCoupon(req.user._id);
+  }
+
+  //docs    User can remove item
+  //route   DELETE api/v1/cart/:id
+  //access  Private (user)
+  @Delete(':itemId')
+  @Roles([Role.User])
+  @UseGuards(AuthGuard)
+  remove(@Param('itemId') itemId: Types.ObjectId, @Req() req: any) {
+    return this.cartService.removeItem(req.user._id, itemId);
   }
 }

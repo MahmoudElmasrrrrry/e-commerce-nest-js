@@ -42,6 +42,36 @@ export class CartService {
     if (!cart.totalAfterDiscount) cart.totalAfterDiscount = cart.totalPrice;
   }
 
+  private async reApplyCoupon(cart: any) {
+    if (!cart.coupons || cart.coupons.length === 0) {
+      return;
+    }
+
+    const couponId = cart.coupons[0];
+    const coupon = await this.couponModel.findById(couponId);
+
+    if (
+      !coupon ||
+      new Date(coupon.expireDate) < new Date() ||
+      !coupon.isActive
+    ) {
+      cart.coupons = [];
+      return;
+    }
+
+    let discount = (cart.totalAfterDiscount * coupon.discount) / 100;
+
+    if (coupon.maxDiscountAmount && discount > coupon.maxDiscountAmount) {
+      discount = coupon.maxDiscountAmount;
+    }
+
+    cart.totalAfterDiscount -= discount;
+
+    if (cart.totalAfterDiscount < 0) {
+      cart.totalAfterDiscount = 0;
+    }
+  }
+
   async addToCart(
     productId: Types.ObjectId,
     userId: Types.ObjectId,
@@ -106,6 +136,7 @@ export class CartService {
     });
 
     await this.calculateCartTotal(cart);
+    await this.reApplyCoupon(cart);
     await cart.save();
 
     return {
@@ -143,6 +174,7 @@ export class CartService {
     });
 
     await this.calculateCartTotal(cart);
+    await this.reApplyCoupon(cart);
     await cart.save();
 
     return {
@@ -240,12 +272,148 @@ export class CartService {
     });
 
     await this.calculateCartTotal(cart);
+    await this.reApplyCoupon(cart);
     await cart.save();
 
     return {
       status: 'success',
       message: 'Cart item updated successfully',
       numOfCartItems: cart.cartItems.length,
+      data: cart,
+    };
+  }
+
+  async deleteCart(userId: Types.ObjectId) {
+    const cart = await this.cartModel.findOneAndUpdate(
+      { user: userId },
+      {
+        cartItems: [],
+        totalPrice: 0,
+        totalAfterDiscount: 0,
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
+    }
+    return {
+      status: 'success',
+      message: 'Cart deleted successfully',
+      numOfCartItems: 0,
+      data: null,
+    };
+  }
+
+  async applyCoupon(userId: Types.ObjectId, couponName: string) {
+    const cart = await this.cartModel.findOne({ user: userId });
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
+    }
+
+    if (cart.cartItems.length === 0) {
+      throw new BadRequestException('Cannot apply coupon to empty cart');
+    }
+    const coupon = await this.couponModel.findOne({ name: couponName });
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
+
+    if (!coupon.isActive) {
+      throw new BadRequestException('Coupon is not active');
+    }
+
+    const expire = new Date(coupon.expireDate) < new Date();
+    if (expire) {
+      throw new BadRequestException('Coupon has already expired');
+    }
+
+    if (coupon.maxUsage && coupon.usedCount >= coupon.maxUsage) {
+      throw new BadRequestException('Coupon usage limit reached');
+    }
+
+    if (coupon.usedBy.some((user) => user.toString() === userId.toString())) {
+      throw new BadRequestException('Coupon has already been used');
+    }
+
+    await cart.populate({
+      path: 'cartItems.product',
+      select: 'price priceAfterDiscount',
+    });
+
+    await this.calculateCartTotal(cart);
+    if (cart.totalAfterDiscount < coupon.minOrderValue) {
+      throw new BadRequestException(
+        `Minimum order value is ${coupon.minOrderValue}. Your cart total is ${cart.totalAfterDiscount}`,
+      );
+    }
+
+    let discount = (cart.totalAfterDiscount * coupon.discount) / 100;
+    if (coupon.maxDiscountAmount && discount > coupon.maxDiscountAmount) {
+      discount = coupon.maxDiscountAmount;
+    }
+
+    cart.totalAfterDiscount -= discount;
+
+    if (cart.totalAfterDiscount < 0) {
+      cart.totalAfterDiscount = 0;
+    }
+
+    cart.coupons = [coupon._id] as any;
+
+    coupon.usedBy.push(userId);
+    coupon.usedCount += 1;
+
+    await coupon.save();
+    await cart.save();
+
+    return {
+      status: 'success',
+      message: 'Coupon applied successfully',
+      data: {
+        cart,
+        appliedDiscount: `${coupon.discount}%`,
+        savedAmount: discount,
+      },
+    };
+  }
+
+  async removeCoupon(userId: Types.ObjectId) {
+    const cart = await this.cartModel.findOne({ user: userId });
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
+    }
+
+    if (!cart.coupons || cart.coupons.length === 0) {
+      throw new BadRequestException('No coupon applied to cart');
+    }
+
+    const cpnId = cart.coupons[0];
+    const coupon = await this.couponModel.findById(cpnId);
+
+    cart.coupons = [];
+
+    await cart.populate({
+      path: 'cartItems.product',
+      select: 'price priceAfterDiscount',
+    });
+
+    await this.calculateCartTotal(cart);
+    await cart.save();
+
+    if (coupon) {
+      coupon.usedBy = coupon.usedBy.filter(
+        (user) => user.toString() !== userId.toString(),
+      );
+      coupon.usedCount -= 1;
+      await coupon.save();
+    }
+
+    return {
+      status: 'success',
+      message: 'Coupon removed successfully',
       data: cart,
     };
   }

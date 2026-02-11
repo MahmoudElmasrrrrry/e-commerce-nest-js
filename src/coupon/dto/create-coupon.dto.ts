@@ -1,19 +1,47 @@
-import { IsDateString, IsNumber, IsString, Length, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsDate,
+  IsNumber,
+  Min,
+  Max,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateCouponDto {
-  @IsString({ message: 'name must be a string' })
-  @Length(3, 100, { message: 'name must be between 3 and 100 characters' })
+  @IsNotEmpty()
+  @IsString()
   name: string;
-  @IsString({ message: 'expireDate must be a string' })
-  @IsDateString(
-    {},
-    {
-      message:
-        'expireDate must be a valid date string in the format YYYY-MM-DD',
-    },
-  )
-  expireDate: string;
-  @IsNumber({}, { message: 'discount must be a number' })
-  @Min(0, { message: 'discount must be at least 0' })
+
+  @IsNotEmpty()
+  @Type(() => Date)
+  @IsDate()
+  expireDate: Date;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(1, { message: 'Discount must be at least 1%' })
+  @Max(100, { message: 'Discount cannot exceed 100%' })
   discount: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minOrderValue?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  maxDiscountAmount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  maxUsage?: number;
 }
