@@ -70,6 +70,9 @@ export class Order{
     @Prop({type: Boolean, default: false})
     isPaid: boolean
 
+    @Prop({type: Date})
+    paidAt: Date
+
     @Prop({
         type:{
             id: String,

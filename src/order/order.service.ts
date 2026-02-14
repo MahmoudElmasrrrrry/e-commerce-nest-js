@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderPaidDto } from './dto/update-order-paid.dto';
 import { Order } from './order.schema';
@@ -86,38 +90,168 @@ export class OrderService {
     });
 
     await order.save();
-    
-    return{
+
+    return {
       status: 'success',
       message: 'Order created successfully',
       data: order,
-    }
-    
+    };
   }
 
   async getUserOrders(userId: Types.ObjectId) {
-    const orders = await this.orderModel.find({ user: userId }).populate({
-      path: 'cartItems.product',
-      select: 'title imageCover price priceAfterDiscount sold quantity',
-    }).sort({ createdAt: -1 });
-    
-    return{
+    const orders = await this.orderModel
+      .find({ user: userId })
+      .populate({
+        path: 'cartItems.product',
+        select: 'title imageCover price priceAfterDiscount sold quantity',
+      })
+      .sort({ createdAt: -1 });
+
+    return {
       status: 'success',
       message: 'Orders fetched successfully',
       count: orders.length,
       data: orders,
+    };
+  }
+
+  async getSpecificOrder(id: Types.ObjectId, userId: Types.ObjectId) {
+    const order = await this.orderModel.findById(id).populate({
+      path: 'cartItems.product',
+      select: 'title imageCover price priceAfterDiscount sold quantity',
+    });
+
+    if (!order) {
+      throw new BadRequestException('Order not found');
     }
+
+    if (order.user.toString() !== userId.toString()) {
+      throw new BadRequestException('You are not allowed to access this order');
+    }
+
+    return {
+      status: 'success',
+      message: 'Order fetched successfully',
+      data: order,
+    };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} order`;
+  async updateOrderToDelevered(id: Types.ObjectId) {
+    const order = await this.orderModel.findById(id);
+    if (!order) {
+      throw new BadRequestException('Order not found');
+    }
+
+    if (order.iscanceled) {
+      throw new BadRequestException(
+        'You can not deliver this order because it is canceled',
+      );
+    }
+
+    if (!order.isPaid) {
+      throw new BadRequestException(
+        'You can not deliver this order because it is not paid',
+      );
+    }
+
+    if (order.isDelivered) {
+      throw new BadRequestException(
+        'You can not deliver this order because it is already delivered',
+      );
+    }
+
+    order.isDelivered = true;
+    order.deliveredAt = new Date();
+    await order.save();
+
+    return {
+      status: 'success',
+      message: 'Order delivered successfully',
+      data: order,
+    };
   }
 
-  update(id: number, UpdateOrderPaidDto: UpdateOrderPaidDto) {
-    return `This action updates a #${id} order`;
+  async updateOrderToPaid(
+    orderId: Types.ObjectId,
+    updateOrderPaidDto: UpdateOrderPaidDto,
+  ) {
+    const order = await this.orderModel.findById(orderId);
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (order.iscanceled) {
+      throw new BadRequestException('Cannot mark a cancelled order as paid');
+    }
+
+    if (order.isPaid) {
+      throw new BadRequestException('Order is already paid');
+    }
+
+    order.isPaid = true;
+    order.paidAt = new Date();
+    order.paymentResult = {
+      id: updateOrderPaidDto.id,
+      status: updateOrderPaidDto.status,
+      update_time: new Date(),
+      email_address: updateOrderPaidDto.email_address || '',
+    };
+
+    await order.save();
+    
+
+    return {
+      status: 'success',
+      message: 'Order marked as paid successfully',
+      data: order,
+    };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} order`;
+  async cancelOrder(id: Types.ObjectId, userId: Types.ObjectId) {
+    const order = await this.orderModel.findById(id);
+    if (!order) {
+      throw new BadRequestException('Order not found');
+    }
+
+    if (order.user.toString() !== userId.toString()) {
+      throw new BadRequestException('You are not allowed to access this order');
+    }
+
+    if (order.isPaid) {
+      throw new BadRequestException(
+        'You can not cancel this order because it is paid',
+      );
+    }
+
+    if (order.isDelivered) {
+      throw new BadRequestException(
+        'You can not cancel this order because it is delivered',
+      );
+    }
+
+    if (order.iscanceled) {
+      throw new BadRequestException(
+        'You can not cancel this order because it is already canceled',
+      );
+    }
+
+    for (const item of order.cartItems) {
+      await this.productModel.findByIdAndUpdate(item.product, {
+        $inc: {
+          quantity: item.quantity,
+          sold: -item.quantity,
+        },
+      });
+    }
+
+    order.iscanceled = true;
+    order.canceledAt = new Date();
+    await order.save();
+
+    return {
+      status: 'success',
+      message: 'Order cancelled successfully',
+      data: order,
+    };
   }
 }
