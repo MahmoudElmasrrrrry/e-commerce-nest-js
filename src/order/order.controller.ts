@@ -9,6 +9,7 @@ import {
   ValidationPipe,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -48,6 +49,39 @@ export class OrderController {
     return this.orderService.getUserOrders(req.user._id);
   }
 
+  //docs    Admin can get all Order
+  //route   GET api/v1/Order
+  //access  Private (Admin)
+  @Get('admin/all')
+  @Roles([Role.Admin])
+  @UseGuards(AuthGuard)
+  getAllOrders(
+    @Query('isPaid') isPaid?: string,
+    @Query('isDelivered') isDelivered?: string,
+    @Query('iscanceled') iscanceled?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const filters = {
+      isPaid: isPaid === 'true' ? true : isPaid === 'false' ? false : undefined,
+      isDelivered: isDelivered === 'true' ? true : isDelivered === 'false' ? false : undefined,
+      iscanceled: iscanceled === 'true' ? true : iscanceled === 'false' ? false : undefined,
+      page: page ? parseInt(page) : undefined,
+      limit: limit ? parseInt(limit) : undefined,
+    }
+    return this.orderService.getAllOrders(filters);
+  }
+
+  //docs    Admin can get all Order
+  //route   GET api/v1/Order
+  //access  Private (Admin)
+
+  @Get('admin/stats')
+  @Roles([Role.Admin])
+  @UseGuards(AuthGuard)
+  getOrderStats() {
+    return this.orderService.getOrderStats();
+  }
   //docs    User can get specific Order
   //route   GET api/v1/Order/:id
   //access  Private (User)
@@ -58,7 +92,10 @@ export class OrderController {
     return this.orderService.getSpecificOrder(id, req.user._id);
   }
 
-  // ----Admin Routes----
+  
+
+
+
   //docs    Admin can update Order To Delevered
   //route   PATCH api/v1/Order/:id
   //access  Private (Admin)
@@ -69,15 +106,23 @@ export class OrderController {
     return this.orderService.updateOrderToDelevered(id);
   }
 
+
+  
   //docs    Admin can update Order To Paid
   //route   PATCH api/v1/Order/:id
   //access  Private (Admin)
   @Patch(':id/paid')
   @Roles([Role.Admin])
   @UseGuards(AuthGuard)
-  updateOrderToPaid(@Param('id') id: Types.ObjectId, @Body(new ValidationPipe({ whitelist: true, transform: true })) updateOrderPaidDto: UpdateOrderPaidDto) {
+  updateOrderToPaid(
+    @Param('id') id: Types.ObjectId,
+    @Body(new ValidationPipe({ whitelist: true, transform: true }))
+    updateOrderPaidDto: UpdateOrderPaidDto,
+  ) {
     return this.orderService.updateOrderToPaid(id, updateOrderPaidDto);
   }
+
+
 
   @Delete(':id')
   @Roles([Role.User])

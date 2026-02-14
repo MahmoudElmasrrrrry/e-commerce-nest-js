@@ -207,6 +207,81 @@ export class OrderService {
     };
   }
 
+  async getAllOrders(filters?:{
+    isPaid?: boolean;
+    isDelivered?: boolean;
+    iscanceled?: boolean;
+    page?: number;
+    limit?: number;
+  }) {
+    
+    const query: any = {};
+    if (filters?.isPaid !== undefined) {
+      query.isPaid = filters.isPaid;
+    }
+    if (filters?.isDelivered !== undefined) {
+      query.isDelivered = filters.isDelivered;
+    }
+    if (filters?.iscanceled !== undefined) {
+      query.iscanceled = filters.iscanceled;
+    }
+
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const orders = await this.orderModel.find(query).populate({
+      path: 'user',
+      select: 'name email phoneNumber',
+    })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+    const totalOrders = await this.orderModel.countDocuments(query);
+    
+    return {
+      status: 'success',
+      message: 'Orders fetched successfully',
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalOrders / limit),
+        totalItems: totalOrders,
+      },
+      data: orders,
+    };
+  }
+
+
+async getOrderStats() {
+  const totalOrders = await this.orderModel.countDocuments();
+
+  const pendingOrders = await this.orderModel.countDocuments({ isPaid: false, isCancelled: false });
+  const paidOrders = await this.orderModel.countDocuments({ isPaid: true, isDelivered: false });
+  const deliveredOrders = await this.orderModel.countDocuments({ isDelivered: true });
+  const cancelledOrders = await this.orderModel.countDocuments({ isCancelled: true });
+
+  const revenueResult = await this.orderModel.aggregate([
+    { $match: { isPaid: true } },
+    { $group: { _id: null, total: { $sum: '$totalOrderPrice' } } },
+  ]);
+  const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+
+  return {
+    status: 'success',
+    data: {
+      totalOrders,
+      totalRevenue,
+      ordersByStatus: {
+        pending: pendingOrders,
+        paid: paidOrders,
+        delivered: deliveredOrders,
+        cancelled: cancelledOrders,
+      },
+    },
+  };
+}
+
   async cancelOrder(id: Types.ObjectId, userId: Types.ObjectId) {
     const order = await this.orderModel.findById(id);
     if (!order) {
