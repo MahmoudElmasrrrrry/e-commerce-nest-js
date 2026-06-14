@@ -52,6 +52,6 @@ export class TaxController {
   @Roles([Role.Admin])
   @UseGuards(AuthGuard)
   reSetTaxes() {
-    return this.taxService.reSet();
+    return this.taxService.reset();
   }
 }
